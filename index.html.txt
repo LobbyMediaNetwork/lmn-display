@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lobby Media Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Oswald:wght@400;600;700&family=Lato:ital,wght@0,300;0,400;0,700;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #c9a84c;
+  --gold2: #e8c96a;
+  --black: #080808;
+  --white: #f5f2eb;
+  --gray: #161616;
+  --gray2: #202020;
+  --gray3: #2a2a2a;
+  --muted: #555;
+  --muted2: #888;
+  --slide-duration: 9000;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--black);
+  overflow: hidden;
+  font-family: 'Lato', sans-serif;
+  cursor: none;
+}
+
+/* ── LAYOUT ── */
+.display {
+  width: 100vw; height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr 72px;
+  position: relative;
+}
+
+/* ── SLIDE AREA ── */
+.slide-area {
+  position: relative;
+  overflow: hidden;
+  background: var(--black);
+}
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.slide.active { opacity: 1; z-index: 2; }
+
+/* Progress bar */
+#progress {
+  position: absolute; bottom: 0; left: 0;
+  height: 2px; background: var(--gold); width: 0%;
+  z-index: 20; transition: width linear;
+  pointer-events: none;
+}
+
+/* ── WEATHER SLIDE ── */
+.slide-weather {
+  background: #0a0e14;
+  flex-direction: column;
+  text-align: center;
+  padding: 60px;
+}
+
+.w-kicker {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; letter-spacing: 0.28em;
+  text-transform: uppercase; color: var(--muted2);
+  margin-bottom: 28px;
+}
+
+.w-icon { font-size: 72px; margin-bottom: 8px; line-height: 1; }
+
+.w-temp {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(100px, 14vw, 170px);
+  font-weight: 900; color: var(--white);
+  line-height: 1; letter-spacing: -0.03em; margin-bottom: 4px;
+}
+
+.w-desc {
+  font-size: 22px; font-weight: 300; color: var(--muted2);
+  margin-bottom: 6px; font-style: italic;
+}
+
+.w-city {
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  color: var(--gold); letter-spacing: 0.22em;
+  text-transform: uppercase; margin-bottom: 36px;
+}
+
+.w-row { display: flex; gap: 56px; justify-content: center; }
+.w-val { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 700; color: var(--white); line-height: 1; }
+.w-lbl { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+
+/* ── DYNAMIC AD SLIDES ── */
+.ad-slide-text {
+  flex-direction: column;
+  text-align: center;
+  padding: 80px;
+  position: relative;
+}
+
+.ad-slide-text .ad-glow {
+  position: absolute; top: -100px; right: -100px;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ad-kicker {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 28px;
+}
+
+.ad-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(52px, 6vw, 84px);
+  font-weight: 900; color: var(--white);
+  line-height: 0.95; margin-bottom: 28px;
+  letter-spacing: -0.02em;
+}
+
+.ad-headline em { font-style: italic; color: var(--gold); }
+
+.ad-divider { width: 48px; height: 2px; background: var(--gold); margin: 0 auto 28px; }
+
+.ad-body {
+  font-size: 20px; font-weight: 300; color: var(--muted2);
+  line-height: 1.65; max-width: 520px; margin: 0 auto 40px;
+}
+
+.ad-cta {
+  font-family: 'DM Mono', monospace; font-size: 13px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--black); background: var(--gold);
+  padding: 18px 48px; display: inline-block;
+}
+
+/* Dark ad variant */
+.ad-slide-dark {
+  flex-direction: column; text-align: center; padding: 80px;
+}
+
+.ad-slide-dark .ad-kicker { color: var(--gold); }
+.ad-slide-dark .ad-headline { color: var(--white); }
+.ad-slide-dark .ad-body { color: var(--muted2); }
+.ad-slide-dark .ad-cta { background: var(--gold); color: var(--black); }
+.ad-slide-dark .ad-divider { background: var(--gold); }
+
+/* Split ad layout */
+.ad-slide-split {
+  flex-direction: row; align-items: stretch; padding: 0; overflow: hidden;
+}
+
+.split-accent { width: 10px; background: var(--gold); flex-shrink: 0; }
+
+.split-content {
+  flex: 1; padding: 70px 60px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+
+.split-right {
+  width: 320px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 50px 40px; gap: 0;
+  border-left: 1px solid rgba(255,255,255,0.06);
+}
+
+.split-stat { text-align: center; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.06); width: 100%; }
+.split-stat:last-child { border-bottom: none; }
+.split-stat-num { font-family: 'Oswald', sans-serif; font-size: 44px; font-weight: 700; color: var(--gold); line-height: 1; }
+.split-stat-lbl { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px; }
+
+/* LMN Promo slide */
+.slide-promo {
+  background: var(--black);
+  flex-direction: column; text-align: center; padding: 80px;
+  position: relative; overflow: hidden;
+}
+
+.promo-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(201,168,76,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.promo-bug {
+  width: 80px; height: 80px;
+  background: var(--black);
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 32px;
+}
+
+.promo-bug span {
+  font-family: 'Oswald', sans-serif;
+  font-size: 28px; font-weight: 700;
+  color: var(--gold); letter-spacing: 0.04em;
+}
+
+.promo-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(48px, 6vw, 80px);
+  font-weight: 900; color: var(--white);
+  line-height: 0.95; margin-bottom: 24px;
+  letter-spacing: -0.02em;
+}
+
+.promo-headline em { font-style: italic; color: var(--gold); }
+
+.promo-sub {
+  font-size: 18px; font-weight: 300; color: var(--muted2);
+  margin-bottom: 32px; max-width: 480px; margin-left: auto; margin-right: auto;
+}
+
+.promo-url {
+  font-family: 'DM Mono', monospace; font-size: 16px;
+  color: var(--gold); letter-spacing: 0.2em;
+}
+
+/* Loading slide */
+.slide-loading {
+  background: var(--black); flex-direction: column;
+  text-align: center; gap: 20px;
+}
+
+.loading-bug {
+  width: 64px; height: 64px;
+  background: var(--black); border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+.loading-bug span {
+  font-family: 'Oswald', sans-serif;
+  font-size: 22px; font-weight: 700;
+  color: var(--gold); letter-spacing: 0.04em;
+}
+
+.loading-text {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
+}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar {
+  background: var(--gray);
+  border-top: 1px solid var(--gray2);
+  display: flex; align-items: center;
+  padding: 0 24px; overflow: hidden; gap: 0;
+}
+
+.lmn-bug {
+  width: 48px; height: 100%;
+  background: var(--black);
+  border: 1px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-right: 20px;
+}
+
+.lmn-bug span {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--gold); letter-spacing: 0.04em;
+}
+
+.ticker-wrap {
+  flex: 1; overflow: hidden; height: 100%;
+  display: flex; align-items: center;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
+}
+
+.ticker-track {
+  display: flex; gap: 56px; white-space: nowrap;
+  will-change: transform;
+}
+
+.ticker-item { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.ticker-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+.ticker-text { font-size: 13px; font-weight: 300; color: #ccc; }
+.ticker-divider { width: 1px; height: 14px; background: var(--gray3); flex-shrink: 0; }
+
+.bottom-clock {
+  flex-shrink: 0; margin-left: 20px; padding-left: 20px;
+  border-left: 1px solid var(--gray3); text-align: right;
+}
+
+.clock-time {
+  font-family: 'DM Mono', monospace; font-size: 18px;
+  color: var(--white); letter-spacing: 0.06em; line-height: 1;
+}
+
+.clock-date {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  color: var(--muted); letter-spacing: 0.14em;
+  text-transform: uppercase; margin-top: 4px;
+}
+</style>
+</head>
+<body>
+<div class="display">
+
+  <div class="slide-area">
+    <div id="progress"></div>
+
+    <!-- Loading slide shown while fetching data -->
+    <div class="slide active" id="slide-loading">
+      <div class="loading-bug"><span>LMN</span></div>
+      <div class="loading-text">Loading network content...</div>
+    </div>
+
+    <!-- Weather slide (populated by JS) -->
+    <div class="slide slide-weather" id="slide-weather">
+      <div class="w-kicker" id="w-kicker">Current Conditions</div>
+      <div class="w-icon" id="w-icon">⛅</div>
+      <div class="w-temp" id="w-temp">--°</div>
+      <div class="w-desc" id="w-desc">Loading...</div>
+      <div class="w-city" id="w-city">Loading...</div>
+      <div class="w-row">
+        <div><div class="w-val" id="w-feels">--°</div><div class="w-lbl">Feels Like</div></div>
+        <div><div class="w-val" id="w-humidity">--%</div><div class="w-lbl">Humidity</div></div>
+        <div><div class="w-val" id="w-wind">--mph</div><div class="w-lbl">Wind</div></div>
+      </div>
+    </div>
+
+    <!-- LMN Promo slide -->
+    <div class="slide slide-promo" id="slide-promo">
+      <div class="promo-bg"></div>
+      <div class="promo-bug"><span>LMN</span></div>
+      <div class="promo-headline">Your ad. In the room<br>where it <em>matters most.</em></div>
+      <p class="promo-sub">Reach local CSRA customers while they wait — on screens inside the lobbies they visit every week.</p>
+      <div class="promo-url">lobbymedia.network</div>
+    </div>
+
+    <!-- Dynamic ad slides injected by JS -->
+    <div id="ad-container"></div>
+
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    <div class="lmn-bug"><span>LMN</span></div>
+    <div class="ticker-wrap">
+      <div class="ticker-track" id="ticker-track">
+        <div class="ticker-item"><div class="ticker-dot"></div><div class="ticker-text">Loading local news...</div></div>
+      </div>
+    </div>
+    <div class="bottom-clock">
+      <div class="clock-time" id="clock-time">--:-- --</div>
+      <div class="clock-date" id="clock-date">Loading...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// LOBBY MEDIA NETWORK — Display App v1.0
+// ══════════════════════════════════════════
+
+const SUPABASE_URL = 'https://lmbuqdcaionkmhcwwflp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtYnVxZGNhaW9ua21oY3d3ZmxwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODU1MTgsImV4cCI6MjA5NTY2MTUxOH0.ffrz3WZcIUg5hGzIkSOtREk7ilFQbZzUPIqVyMvXeVA';
+const WEATHER_KEY  = '6371158683a01fb1ac1cb6170ce883e7';
+const SLIDE_DURATION = 9000;
+
+// Get screen ID from URL param — default to SCR-001 for testing
+const params = new URLSearchParams(window.location.search);
+const SCREEN_CODE = params.get('screen') || 'SCR-001';
+
+let slides = [];
+let currentIndex = 0;
+let screenData = null;
+let progressTimer = null;
+let rotationTimer = null;
+let tickerAnimation = null;
+
+// ── SUPABASE HELPER ──
+async function supabase(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+      ...options.headers
+    },
+    ...options
+  });
+  if (options.method && options.method !== 'GET') return res;
+  return res.json();
+}
+
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById('clock-time').textContent = `${h}:${m} ${ampm}`;
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('clock-date').textContent =
+    `${days[now.getDay()]} · ${months[now.getMonth()]} ${now.getDate()}`;
+}
+
+// ── BUSINESS HOURS CHECK ──
+function isDuringBusinessHours(screen) {
+  if (!screen) return true;
+  const now = new Date();
+  const day = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()];
+  const days = screen.days_open || ['Mon','Tue','Wed','Thu','Fri'];
+  if (!days.includes(day)) return false;
+  const [oh, om] = (screen.business_hours_open || '08:00').split(':').map(Number);
+  const [ch, cm] = (screen.business_hours_close || '18:00').split(':').map(Number);
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const openMins = oh * 60 + om;
+  const closeMins = ch * 60 + cm;
+  return nowMins >= openMins && nowMins < closeMins;
+}
+
+// ── WEATHER ──
+async function loadWeather(city, state) {
+  try {
+    const query = `${city},${state},US`;
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(query)}&appid=${WEATHER_KEY}&units=imperial`
+    );
+    const data = await res.json();
+    if (data.cod !== 200) throw new Error('Weather fetch failed');
+
+    const icons = {
+      'Clear': '☀️', 'Clouds': '⛅', 'Rain': '🌧️',
+      'Drizzle': '🌦️', 'Thunderstorm': '⛈️', 'Snow': '❄️',
+      'Mist': '🌫️', 'Fog': '🌫️', 'Haze': '🌫️'
+    };
+
+    document.getElementById('w-kicker').textContent = `Current Conditions · ${city}, ${state}`;
+    document.getElementById('w-icon').textContent = icons[data.weather[0].main] || '🌤️';
+    document.getElementById('w-temp').textContent = `${Math.round(data.main.temp)}°`;
+    document.getElementById('w-desc').textContent = data.weather[0].description;
+    document.getElementById('w-city').textContent = `${city}, ${state}`;
+    document.getElementById('w-feels').textContent = `${Math.round(data.main.feels_like)}°`;
+    document.getElementById('w-humidity').textContent = `${data.main.humidity}%`;
+    document.getElementById('w-wind').textContent = `${Math.round(data.wind.speed)}mph`;
+  } catch (e) {
+    console.warn('Weather load failed:', e);
+    document.getElementById('w-temp').textContent = '--°';
+    document.getElementById('w-desc').textContent = 'Weather unavailable';
+  }
+}
+
+// ── NEWS TICKER ──
+async function loadNews(feedUrl) {
+  try {
+    const rss = await fetch(
+      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&api_key=public&count=10`
+    );
+    const data = await rss.json();
+    const items = data.items || [];
+
+    if (items.length === 0) throw new Error('No items');
+
+    const track = document.getElementById('ticker-track');
+    const source = screenData?.news_feed_source || 'Local News';
+
+    // Build ticker items — duplicate for seamless loop
+    const buildItems = () => items.map(item =>
+      `<div class="ticker-item">
+        <div class="ticker-dot"></div>
+        <div class="ticker-text">${item.title} — ${source}</div>
+      </div>
+      <div class="ticker-divider"></div>`
+    ).join('');
+
+    track.innerHTML = buildItems() + buildItems();
+    startTicker();
+  } catch (e) {
+    console.warn('News load failed:', e);
+    // Fallback static ticker
+    const track = document.getElementById('ticker-track');
+    const items = [
+      'Welcome to the Lobby Media Network',
+      'Advertise your CSRA business — lobbymedia.network',
+      'Lobby Media Network · Serving the Central Savannah River Area',
+    ];
+    const html = [...items, ...items].map(t =>
+      `<div class="ticker-item"><div class="ticker-dot"></div><div class="ticker-text">${t}</div></div><div class="ticker-divider"></div>`
+    ).join('');
+    track.innerHTML = html;
+    startTicker();
+  }
+}
+
+function startTicker() {
+  const track = document.getElementById('ticker-track');
+  let pos = 0;
+  const speed = 0.5; // pixels per frame
+  if (tickerAnimation) cancelAnimationFrame(tickerAnimation);
+
+  function animate() {
+    pos -= speed;
+    const half = track.scrollWidth / 2;
+    if (Math.abs(pos) >= half) pos = 0;
+    track.style.transform = `translateX(${pos}px)`;
+    tickerAnimation = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// ── BUILD AD SLIDE ──
+function buildAdSlide(ad, index) {
+  const div = document.createElement('div');
+  div.className = 'slide';
+  div.id = `slide-ad-${index}`;
+  div.dataset.adId = ad.id;
+
+  const bg = ad.bg_color || '#080808';
+  const accent = ad.accent_color || '#c9a84c';
+
+  if (ad.type === 'text') {
+    // Text ad layout
+    div.style.background = bg;
+    div.classList.add('ad-slide-text');
+    div.innerHTML = `
+      <div class="ad-glow" style="background: radial-gradient(circle, ${accent}10 0%, transparent 70%);"></div>
+      ${ad.headline_sub ? `<div class="ad-kicker" style="color:${accent};">${ad.headline_sub}</div>` : ''}
+      <div class="ad-headline" style="color:var(--white);">${ad.headline || 'Your Business Here'}</div>
+      <div class="ad-divider" style="background:${accent};"></div>
+      ${ad.file_url ? `<p class="ad-body">${ad.file_url}</p>` : ''}
+      ${ad.cta ? `<div class="ad-cta" style="background:${accent}; color:${bg};">${ad.cta}</div>` : ''}
+    `;
+  } else if (ad.type === 'image' && ad.file_url) {
+    div.innerHTML = `<img src="${ad.file_url}" style="width:100%;height:100%;object-fit:cover;" alt="${ad.headline || 'Advertisement'}"/>`;
+  } else if (ad.type === 'video' && ad.file_url) {
+    div.innerHTML = `<video src="${ad.file_url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video>`;
+  } else {
+    // Fallback text layout
+    div.style.background = bg;
+    div.classList.add('ad-slide-text');
+    div.innerHTML = `
+      <div class="ad-kicker" style="color:${accent};">Advertisement</div>
+      <div class="ad-headline" style="color:var(--white);">${ad.headline || 'Your Business<br><em>Here</em>'}</div>
+      <div class="ad-divider" style="background:${accent};"></div>
+      ${ad.cta ? `<div class="ad-cta" style="background:${accent}; color:#080808;">${ad.cta}</div>` : ''}
+    `;
+  }
+
+  return div;
+}
+
+// ── LOG AD PLAY ──
+async function logPlay(adId) {
+  if (!screenData || !adId) return;
+  const duringHours = isDuringBusinessHours(screenData);
+  await supabase('play_logs', {
+    method: 'POST',
+    body: JSON.stringify({
+      screen_id: screenData.id,
+      ad_id: adId,
+      duration_seconds: SLIDE_DURATION / 1000,
+      during_business_hours: duringHours
+    })
+  });
+}
+
+// ── HEARTBEAT ──
+async function sendHeartbeat() {
+  if (!screenData) return;
+  await supabase('heartbeats', {
+    method: 'POST',
+    body: JSON.stringify({ screen_id: screenData.id })
+  });
+}
+
+// ── PROGRESS BAR ──
+function animateProgress(color = '#c9a84c') {
+  const bar = document.getElementById('progress');
+  bar.style.background = color;
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    bar.style.transition = `width ${SLIDE_DURATION}ms linear`;
+    bar.style.width = '100%';
+  }));
+}
+
+// ── SLIDE ROTATION ──
+function showSlide(index) {
+  // Hide all
+  slides.forEach(s => s.el.classList.remove('active'));
+
+  // Show current
+  const slide = slides[index];
+  slide.el.classList.add('active');
+
+  // Update progress bar color based on slide type
+  const color = slide.type === 'ad' && slide.accentColor
+    ? slide.accentColor
+    : '#c9a84c';
+  animateProgress(color);
+
+  // Log play if it's an ad
+  if (slide.type === 'ad' && slide.adId) {
+    logPlay(slide.adId);
+  }
+}
+
+function nextSlide() {
+  currentIndex = (currentIndex + 1) % slides.length;
+  showSlide(currentIndex);
+}
+
+function startRotation() {
+  if (rotationTimer) clearInterval(rotationTimer);
+  rotationTimer = setInterval(nextSlide, SLIDE_DURATION);
+}
+
+// ── BUILD PLAYLIST ──
+function buildPlaylist(ads) {
+  slides = [];
+
+  // Add ad container to DOM
+  const container = document.getElementById('ad-container');
+  container.innerHTML = '';
+
+  const adSlides = [];
+  ads.forEach((ad, i) => {
+    const el = buildAdSlide(ad, i);
+    container.appendChild(el);
+    adSlides.push({
+      el,
+      type: 'ad',
+      adId: ad.id,
+      accentColor: ad.accent_color || '#c9a84c'
+    });
+  });
+
+  // Build rotation: ad, ad, weather, ad, ad, promo, repeat
+  // If no ads, show promo + weather only
+  if (adSlides.length === 0) {
+    slides.push({ el: document.getElementById('slide-promo'), type: 'promo', adId: null });
+    slides.push({ el: document.getElementById('slide-weather'), type: 'weather', adId: null });
+  } else {
+    let adIndex = 0;
+    const totalSlots = Math.max(adSlides.length * 2, 6);
+
+    for (let i = 0; i < totalSlots; i++) {
+      if (i > 0 && i % 3 === 0) {
+        // Every 3rd slot — alternate weather and promo
+        if (i % 6 === 0) {
+          slides.push({ el: document.getElementById('slide-weather'), type: 'weather', adId: null });
+        } else {
+          slides.push({ el: document.getElementById('slide-promo'), type: 'promo', adId: null });
+        }
+      } else {
+        if (adSlides.length > 0) {
+          slides.push(adSlides[adIndex % adSlides.length]);
+          adIndex++;
+        }
+      }
+    }
+  }
+}
+
+// ── MAIN INIT ──
+async function init() {
+  // Start clock immediately
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  try {
+    // 1. Fetch screen data
+    const screenResults = await supabase(
+      `screens?screen_id=eq.${SCREEN_CODE}&select=*`
+    );
+
+    if (screenResults && screenResults.length > 0) {
+      screenData = screenResults[0];
+    } else {
+      // Default fallback screen data
+      screenData = {
+        id: null,
+        screen_id: SCREEN_CODE,
+        business_name: 'Lobby Media Network',
+        city: 'Evans',
+        state: 'GA',
+        business_hours_open: '08:00',
+        business_hours_close: '20:00',
+        days_open: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        news_feed_url: 'https://feeds.feedburner.com/wrdw/news',
+        news_feed_source: 'WRDW Augusta',
+      };
+    }
+
+    // 2. Load weather
+    await loadWeather(screenData.city || 'Evans', screenData.state || 'GA');
+
+    // 3. Load news
+    await loadNews(screenData.news_feed_url || 'https://feeds.feedburner.com/wrdw/news');
+
+    // 4. Fetch ads assigned to this screen
+    let ads = [];
+    if (screenData.id) {
+      const assignments = await supabase(
+        `screen_ad_assignments?screen_id=eq.${screenData.id}&select=ad_id`
+      );
+      const adIds = (assignments || []).map(a => a.ad_id).filter(Boolean);
+
+      if (adIds.length > 0) {
+        ads = await supabase(
+          `ads?id=in.(${adIds.join(',')})&active=eq.true&select=*`
+        );
+      }
+    }
+
+    // 5. Build playlist and start rotation
+    buildPlaylist(ads || []);
+
+    // 6. Hide loading slide and start
+    document.getElementById('slide-loading').classList.remove('active');
+    currentIndex = 0;
+    showSlide(0);
+    startRotation();
+
+    // 7. Send initial heartbeat then every 5 minutes
+    sendHeartbeat();
+    setInterval(sendHeartbeat, 5 * 60 * 1000);
+
+    // 8. Refresh weather every 30 minutes
+    setInterval(() => loadWeather(screenData.city || 'Evans', screenData.state || 'GA'), 30 * 60 * 1000);
+
+    // 9. Reload ads every hour (picks up new campaigns)
+    setInterval(async () => {
+      if (!screenData.id) return;
+      const assignments = await supabase(
+        `screen_ad_assignments?screen_id=eq.${screenData.id}&select=ad_id`
+      );
+      const adIds = (assignments || []).map(a => a.ad_id).filter(Boolean);
+      if (adIds.length > 0) {
+        const freshAds = await supabase(
+          `ads?id=in.(${adIds.join(',')})&active=eq.true&select=*`
+        );
+        buildPlaylist(freshAds || []);
+      }
+    }, 60 * 60 * 1000);
+
+  } catch (err) {
+    console.error('LMN init error:', err);
+    // Show promo and weather as fallback
+    buildPlaylist([]);
+    document.getElementById('slide-loading').classList.remove('active');
+    showSlide(0);
+    startRotation();
+    startTicker();
+  }
+}
+
+// Start everything
+init();
+</script>
+</body>
+</html>
