@@ -716,8 +716,8 @@ async function init() {
     // 2. Load weather
     await loadWeather(screenData.city || 'Evans', screenData.state || 'GA');
 
-    // 3. Load news
-    await loadNews(screenData.news_feed_url || 'https://www.wrdw.com/rss/news.rss');
+    // 3. Load news — run in background, never block loading screen
+    loadNews(screenData.news_feed_url || 'https://theaugustapress.com/feed/').catch(() => startTicker());
 
     // 4. Fetch ads assigned to this screen
     let ads = [];
