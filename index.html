@@ -465,13 +465,31 @@ async function loadWeather(city, state) {
 
 // ── NEWS TICKER ──
 async function loadNews(feedUrl) {
-  try {
-    const rss = await fetch(
-      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&api_key=public&count=10`
-    );
-    const data = await rss.json();
-    const items = data.items || [];
+  // Try multiple feed sources in order
+  const feeds = [
+    feedUrl,
+    'https://theaugustapress.com/feed/',
+    'https://augustagoodnews.com/feed/',
+  ];
 
+  let items = [];
+
+  for (const feed of feeds) {
+    try {
+      const rss = await fetch(
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&count=10`
+      );
+      const data = await rss.json();
+      if (data.items && data.items.length > 0) {
+        items = data.items;
+        break;
+      }
+    } catch(e) {
+      continue;
+    }
+  }
+
+  try {
     if (items.length === 0) throw new Error('No items');
 
     const track = document.getElementById('ticker-track');
@@ -488,6 +506,7 @@ async function loadNews(feedUrl) {
 
     track.innerHTML = buildItems() + buildItems();
     startTicker();
+  } catch (e2) { console.warn('Feed parse error:', e2); startTicker(); }
   } catch (e) {
     console.warn('News load failed:', e);
     // Fallback static ticker
