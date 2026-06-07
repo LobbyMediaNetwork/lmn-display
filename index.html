@@ -494,60 +494,35 @@ async function loadNews(feedUrl) {
   buildTickerHTML(LMN_TICKER);
   startTicker();
 
-  // Try local news server first (Mini PC running lmn-news-server.js)
+  // Try Supabase news_ticker table — updated by Mini PC news server
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch('http://localhost:3000/news', { signal: controller.signal });
-    clearTimeout(timeout);
-    const data = await res.json();
-    if (data.headlines && data.headlines.length > 0) {
-      console.log(`News loaded from local server: ${data.source}`);
-      buildTickerHTML(data.headlines);
-      // Refresh from local server every 30 minutes
-      setInterval(async () => {
-        try {
-          const r = await fetch('http://localhost:3000/news');
-          const d = await r.json();
-          if (d.headlines && d.headlines.length > 0) buildTickerHTML(d.headlines);
-        } catch(e) {}
-      }, 30 * 60 * 1000);
-      return;
-    }
-  } catch(e) {
-    console.log('Local news server not running — trying remote feeds');
-  }
-
-  // Fallback: try remote RSS via proxy
-  const proxies = [
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.wrdw.com/rss/news.rss')}&count=8`,
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://theaugustapress.com/feed/')}&count=8`,
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=8`,
-  ];
-
-  for (const proxy of proxies) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(proxy, { signal: controller.signal });
-      clearTimeout(timeout);
-      const data = await res.json();
-      if (data.status === 'ok' && data.items && data.items.length > 0) {
-        const source = screenData?.news_feed_source || 'CSRA News';
-        const headlines = data.items.map(i => `${i.title} · ${source}`);
-        const mixed = [];
-        headlines.forEach((h, i) => {
-          mixed.push(h);
-          if (i % 3 === 2) mixed.push(LMN_TICKER[i % LMN_TICKER.length]);
-        });
-        buildTickerHTML(mixed.length > 0 ? mixed : LMN_TICKER);
+    const data = await supabase('news_ticker?screen_id=eq.ALL&select=headlines,source&limit=1');
+    if (data && data.length > 0) {
+      const headlines = typeof data[0].headlines === 'string'
+        ? JSON.parse(data[0].headlines)
+        : data[0].headlines;
+      if (headlines && headlines.length > 0) {
+        console.log(`News loaded from Supabase: ${data[0].source}`);
+        buildTickerHTML(headlines);
+        // Refresh from Supabase every 30 minutes
+        setInterval(async () => {
+          try {
+            const fresh = await supabase('news_ticker?screen_id=eq.ALL&select=headlines,source&limit=1');
+            if (fresh && fresh.length > 0) {
+              const h = typeof fresh[0].headlines === 'string'
+                ? JSON.parse(fresh[0].headlines)
+                : fresh[0].headlines;
+              if (h && h.length > 0) buildTickerHTML(h);
+            }
+          } catch(e) {}
+        }, 30 * 60 * 1000);
         return;
       }
-    } catch(e) {
-      continue;
     }
+  } catch(e) {
+    console.log('Supabase news fetch failed — using LMN ticker');
   }
-  // All failed — LMN ticker already running
+  // Supabase failed — LMN ticker already running
 }
 
 function startTicker() {
