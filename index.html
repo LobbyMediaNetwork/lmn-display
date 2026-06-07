@@ -1058,16 +1058,14 @@ function buildPlaylist(ads, stockVideos = []) {
     slides.push(promoSlide);
     slides.push(weatherSlide);
   } else {
-    // Build rotation: 3 content, weather, 3 content, promo, repeat
+    // Build rotation: content, weather, content, promo, repeat
     let contentIndex = 0;
     const cycles = Math.max(contentPool.length * 2, 4);
     for (let i = 0; i < cycles; i++) {
-      // Add 3 content slides
-      for (let j = 0; j < 3; j++) {
-        slides.push(contentPool[contentIndex % contentPool.length]);
-        contentIndex++;
-      }
-      // Add weather after first group, promo after second group
+      // Add 1 content slide
+      slides.push(contentPool[contentIndex % contentPool.length]);
+      contentIndex++;
+      // Alternate weather and promo after each content slide
       if (i % 2 === 0) {
         slides.push(weatherSlide);
       } else {
