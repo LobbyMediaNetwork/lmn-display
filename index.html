@@ -945,12 +945,31 @@ function animateProgress(color = '#c9a84c') {
 
 // ── SLIDE ROTATION ──
 function showSlide(index) {
+  // Pause all videos first
+  document.querySelectorAll('.slide video').forEach(v => {
+    v.pause();
+    v.currentTime = 0;
+  });
+
   // Hide all
   slides.forEach(s => s.el.classList.remove('active'));
 
   // Show current
   const slide = slides[index];
   slide.el.classList.add('active');
+
+  // Play video if this is a stock or video slide
+  if (slide.type === 'stock' || slide.type === 'video') {
+    const video = slide.el.querySelector('video');
+    if (video) {
+      video.play().catch(() => {});
+    }
+  }
+
+  // Start weather animation when weather slide shows
+  if (slide.type === 'weather') {
+    setTimeout(() => initWeatherAnimation(currentWeatherType), 100);
+  }
 
   // Update progress bar color based on slide type
   const color = slide.type === 'ad' && slide.accentColor
@@ -1000,9 +1019,10 @@ function buildPlaylist(ads, stockVideos = []) {
     const div = document.createElement('div');
     div.className = 'slide';
     div.id = `slide-stock-${i}`;
-    div.innerHTML = `<video src="${v.video_url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video>`;
+    // Use poster attribute and only play when active
+    div.innerHTML = `<video id="stock-video-${i}" src="${v.video_url}" muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>`;
     document.getElementById('ad-container').appendChild(div);
-    stockSlides.push({ el: div, type: 'stock', adId: null });
+    stockSlides.push({ el: div, type: 'stock', adId: null, videoId: `stock-video-${i}` });
   });
 
   const weatherSlide = { el: document.getElementById('slide-weather'), type: 'weather', adId: null };
