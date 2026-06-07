@@ -932,13 +932,13 @@ async function sendHeartbeat() {
 }
 
 // ── PROGRESS BAR ──
-function animateProgress(color = '#c9a84c') {
+function animateProgress(color = '#c9a84c', duration = SLIDE_DURATION) {
   const bar = document.getElementById('progress');
   bar.style.background = color;
   bar.style.transition = 'none';
   bar.style.width = '0%';
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    bar.style.transition = `width ${SLIDE_DURATION}ms linear`;
+    bar.style.transition = `width ${duration}ms linear`;
     bar.style.width = '100%';
   }));
 }
@@ -958,29 +958,41 @@ function showSlide(index) {
   const slide = slides[index];
   slide.el.classList.add('active');
 
-  // Play video if this is a stock or video slide
+  // Determine how long to show this slide
+  let duration = SLIDE_DURATION;
   if (slide.type === 'stock' || slide.type === 'video') {
     const video = slide.el.querySelector('video');
     if (video) {
       video.play().catch(() => {});
+      // Use video's actual duration if available
+      const videoDuration = slide.duration ? slide.duration * 1000 : SLIDE_DURATION;
+      duration = videoDuration;
     }
   }
 
   // Start weather animation when weather slide shows
   if (slide.type === 'weather') {
     setTimeout(() => initWeatherAnimation(currentWeatherType), 100);
+    duration = 12000; // Give weather slide 12 seconds
   }
 
-  // Update progress bar color based on slide type
+  // Update progress bar
   const color = slide.type === 'ad' && slide.accentColor
     ? slide.accentColor
     : '#c9a84c';
-  animateProgress(color);
+  animateProgress(color, duration);
 
   // Log play if it's an ad
   if (slide.type === 'ad' && slide.adId) {
     logPlay(slide.adId);
   }
+
+  // Schedule next slide based on this slide's duration
+  if (rotationTimer) clearTimeout(rotationTimer);
+  rotationTimer = setTimeout(() => {
+    currentIndex = (currentIndex + 1) % slides.length;
+    showSlide(currentIndex);
+  }, duration);
 }
 
 function nextSlide() {
@@ -988,9 +1000,12 @@ function nextSlide() {
   showSlide(currentIndex);
 }
 
+// Keep for backwards compatibility
+
 function startRotation() {
-  if (rotationTimer) clearInterval(rotationTimer);
-  rotationTimer = setInterval(nextSlide, SLIDE_DURATION);
+  if (rotationTimer) clearTimeout(rotationTimer);
+  // Rotation is now handled by showSlide with per-slide duration
+  showSlide(currentIndex);
 }
 
 // ── BUILD PLAYLIST ──
@@ -1022,7 +1037,7 @@ function buildPlaylist(ads, stockVideos = []) {
     // Use poster attribute and only play when active
     div.innerHTML = `<video id="stock-video-${i}" src="${v.video_url}" muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>`;
     document.getElementById('ad-container').appendChild(div);
-    stockSlides.push({ el: div, type: 'stock', adId: null, videoId: `stock-video-${i}` });
+    stockSlides.push({ el: div, type: 'stock', adId: null, videoId: `stock-video-${i}`, duration: v.duration_seconds || 15 });
   });
 
   const weatherSlide = { el: document.getElementById('slide-weather'), type: 'weather', adId: null };
