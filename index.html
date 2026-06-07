@@ -323,16 +323,46 @@ html, body {
     </div>
 
     <!-- Weather slide (populated by JS) -->
-    <div class="slide slide-weather" id="slide-weather">
-      <div class="w-kicker" id="w-kicker">Current Conditions</div>
-      <div class="w-icon" id="w-icon">⛅</div>
-      <div class="w-temp" id="w-temp">--°</div>
-      <div class="w-desc" id="w-desc">Loading...</div>
-      <div class="w-city" id="w-city">Loading...</div>
-      <div class="w-row">
-        <div><div class="w-val" id="w-feels">--°</div><div class="w-lbl">Feels Like</div></div>
-        <div><div class="w-val" id="w-humidity">--%</div><div class="w-lbl">Humidity</div></div>
-        <div><div class="w-val" id="w-wind">--mph</div><div class="w-lbl">Wind</div></div>
+    <div class="slide" id="slide-weather" style="background:#0a0e14; overflow:hidden; position:relative;">
+      <!-- Animated background canvas -->
+      <canvas id="weather-canvas" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+
+      <!-- Content -->
+      <div style="position:relative;z-index:2;width:100%;height:100%;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:60px 80px;gap:40px;">
+
+        <!-- Left: Main temp and condition -->
+        <div style="display:flex;flex-direction:column;justify-content:center;">
+          <div id="w-city" style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:#c9a84c;margin-bottom:16px;">Evans, GA</div>
+          <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:8px;">
+            <div id="w-temp" style="font-family:'Playfair Display',serif;font-size:clamp(100px,13vw,160px);font-weight:900;color:#f5f0e8;line-height:1;letter-spacing:-0.03em;">--°</div>
+          </div>
+          <div id="w-desc" style="font-size:22px;font-weight:300;color:#9a8f7e;font-style:italic;margin-bottom:24px;">Loading...</div>
+          <div id="w-kicker" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#6b6355;">Current Conditions</div>
+        </div>
+
+        <!-- Right: Animated icon + stats -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:32px;">
+          <!-- Big animated weather icon -->
+          <div id="w-icon-wrap" style="position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;">
+            <canvas id="weather-icon-canvas" width="180" height="180"></canvas>
+          </div>
+
+          <!-- Stats grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;width:100%;">
+            <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">
+              <div id="w-feels" style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#f5f0e8;line-height:1;">--°</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6355;margin-top:6px;">Feels Like</div>
+            </div>
+            <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">
+              <div id="w-humidity" style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#f5f0e8;line-height:1;">--%</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6355;margin-top:6px;">Humidity</div>
+            </div>
+            <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">
+              <div id="w-wind" style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#f5f0e8;line-height:1;">--</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6355;margin-top:6px;">Wind mph</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -438,6 +468,292 @@ function isDuringBusinessHours(screen) {
   return nowMins >= openMins && nowMins < closeMins;
 }
 
+// ── WEATHER ANIMATIONS ──
+let weatherAnimFrame = null;
+let weatherParticles = [];
+let currentWeatherType = 'clear';
+
+function initWeatherAnimation(type) {
+  currentWeatherType = type;
+  weatherParticles = [];
+
+  const canvas = document.getElementById('weather-canvas');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  // Create particles based on weather type
+  if (type === 'rain' || type === 'drizzle') {
+    for (let i = 0; i < 120; i++) {
+      weatherParticles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        speed: 8 + Math.random() * 6,
+        length: 15 + Math.random() * 20,
+        opacity: 0.2 + Math.random() * 0.4
+      });
+    }
+  } else if (type === 'snow') {
+    for (let i = 0; i < 80; i++) {
+      weatherParticles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: 2 + Math.random() * 4,
+        speed: 1 + Math.random() * 2,
+        drift: (Math.random() - 0.5) * 0.5,
+        opacity: 0.4 + Math.random() * 0.6
+      });
+    }
+  } else if (type === 'clouds' || type === 'mist') {
+    for (let i = 0; i < 6; i++) {
+      weatherParticles.push({
+        x: Math.random() * canvas.width,
+        y: 50 + Math.random() * (canvas.height - 100),
+        width: 200 + Math.random() * 300,
+        height: 60 + Math.random() * 80,
+        speed: 0.2 + Math.random() * 0.3,
+        opacity: 0.06 + Math.random() * 0.08
+      });
+    }
+  } else if (type === 'thunder') {
+    for (let i = 0; i < 80; i++) {
+      weatherParticles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        speed: 10 + Math.random() * 8,
+        length: 20 + Math.random() * 25,
+        opacity: 0.3 + Math.random() * 0.4
+      });
+    }
+  } else if (type === 'clear') {
+    // Stars/particles for clear night or shimmer for day
+    for (let i = 0; i < 60; i++) {
+      weatherParticles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: 0.5 + Math.random() * 1.5,
+        pulse: Math.random() * Math.PI * 2,
+        speed: 0.02 + Math.random() * 0.03
+      });
+    }
+  }
+
+  if (weatherAnimFrame) cancelAnimationFrame(weatherAnimFrame);
+  animateWeather();
+}
+
+function animateWeather() {
+  const canvas = document.getElementById('weather-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (currentWeatherType === 'rain' || currentWeatherType === 'drizzle') {
+    ctx.strokeStyle = '#7aa2d4';
+    weatherParticles.forEach(p => {
+      ctx.globalAlpha = p.opacity;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - 2, p.y + p.length);
+      ctx.stroke();
+      p.y += p.speed;
+      if (p.y > H) { p.y = -p.length; p.x = Math.random() * W; }
+    });
+
+  } else if (currentWeatherType === 'snow') {
+    ctx.fillStyle = '#e8f0f8';
+    weatherParticles.forEach(p => {
+      ctx.globalAlpha = p.opacity;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+      p.y += p.speed;
+      p.x += p.drift;
+      if (p.y > H) { p.y = -5; p.x = Math.random() * W; }
+      if (p.x > W) p.x = 0;
+      if (p.x < 0) p.x = W;
+    });
+
+  } else if (currentWeatherType === 'clouds' || currentWeatherType === 'mist') {
+    weatherParticles.forEach(p => {
+      ctx.globalAlpha = p.opacity;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.width / 2);
+      grad.addColorStop(0, '#aaaaaa');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.width / 2, p.height / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      p.x += p.speed;
+      if (p.x - p.width / 2 > W) p.x = -p.width / 2;
+    });
+
+  } else if (currentWeatherType === 'thunder') {
+    ctx.strokeStyle = '#9b7dd4';
+    weatherParticles.forEach(p => {
+      ctx.globalAlpha = p.opacity * 0.6;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - 2, p.y + p.length);
+      ctx.stroke();
+      p.y += p.speed;
+      if (p.y > H) { p.y = -p.length; p.x = Math.random() * W; }
+    });
+    // Occasional lightning flash
+    if (Math.random() < 0.003) {
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+  } else if (currentWeatherType === 'clear') {
+    ctx.fillStyle = '#c9a84c';
+    weatherParticles.forEach(p => {
+      p.pulse += p.speed;
+      const opacity = 0.1 + Math.sin(p.pulse) * 0.08;
+      ctx.globalAlpha = Math.max(0, opacity);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  ctx.globalAlpha = 1;
+  weatherAnimFrame = requestAnimationFrame(animateWeather);
+}
+
+// Animated weather icon on canvas
+function drawWeatherIcon(type, temp) {
+  const canvas = document.getElementById('weather-icon-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = 90, cy = 90, r = 55;
+
+  ctx.clearRect(0, 0, 180, 180);
+
+  if (type === 'clear') {
+    // Sun
+    const isHot = temp > 85;
+    const sunColor = isHot ? '#ffaa00' : '#ffd700';
+    // Rays
+    ctx.strokeStyle = sunColor;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.7;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * (r + 8), cy + Math.sin(angle) * (r + 8));
+      ctx.lineTo(cx + Math.cos(angle) * (r + 22), cy + Math.sin(angle) * (r + 22));
+      ctx.stroke();
+    }
+    // Circle
+    ctx.globalAlpha = 1;
+    const sunGrad = ctx.createRadialGradient(cx - 10, cy - 10, 0, cx, cy, r);
+    sunGrad.addColorStop(0, '#fff8dc');
+    sunGrad.addColorStop(1, sunColor);
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (type === 'rain' || type === 'drizzle') {
+    // Cloud with rain
+    ctx.fillStyle = '#8899aa';
+    ctx.beginPath();
+    ctx.arc(cx - 15, cy - 10, 28, 0, Math.PI * 2);
+    ctx.arc(cx + 15, cy - 15, 22, 0, Math.PI * 2);
+    ctx.arc(cx, cy - 5, 32, 0, Math.PI * 2);
+    ctx.fill();
+    // Rain drops
+    ctx.strokeStyle = '#7aa2d4';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    [[cx - 20, cy + 25], [cx, cy + 30], [cx + 20, cy + 25],
+     [cx - 10, cy + 40], [cx + 10, cy + 42]].forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 3, y + 12);
+      ctx.stroke();
+    });
+
+  } else if (type === 'snow') {
+    // Cloud
+    ctx.fillStyle = '#ccd8e8';
+    ctx.beginPath();
+    ctx.arc(cx - 15, cy - 10, 28, 0, Math.PI * 2);
+    ctx.arc(cx + 15, cy - 15, 22, 0, Math.PI * 2);
+    ctx.arc(cx, cy - 5, 32, 0, Math.PI * 2);
+    ctx.fill();
+    // Snowflakes
+    ctx.strokeStyle = '#aac8e8';
+    ctx.lineWidth = 2;
+    [[cx - 20, cy + 30], [cx, cy + 35], [cx + 20, cy + 30]].forEach(([x, y]) => {
+      for (let a = 0; a < 3; a++) {
+        const ang = (a / 3) * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(ang) * 8, y - Math.sin(ang) * 8);
+        ctx.lineTo(x + Math.cos(ang) * 8, y + Math.sin(ang) * 8);
+        ctx.stroke();
+      }
+    });
+
+  } else if (type === 'clouds') {
+    // Cloudy
+    ctx.fillStyle = '#667788';
+    ctx.beginPath();
+    ctx.arc(cx - 20, cy + 5, 30, 0, Math.PI * 2);
+    ctx.arc(cx + 20, cy, 25, 0, Math.PI * 2);
+    ctx.arc(cx, cy + 10, 35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8899aa';
+    ctx.beginPath();
+    ctx.arc(cx - 15, cy - 10, 28, 0, Math.PI * 2);
+    ctx.arc(cx + 15, cy - 15, 22, 0, Math.PI * 2);
+    ctx.arc(cx, cy - 5, 32, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (type === 'thunder') {
+    // Storm cloud
+    ctx.fillStyle = '#445566';
+    ctx.beginPath();
+    ctx.arc(cx - 15, cy - 10, 28, 0, Math.PI * 2);
+    ctx.arc(cx + 15, cy - 15, 22, 0, Math.PI * 2);
+    ctx.arc(cx, cy - 5, 32, 0, Math.PI * 2);
+    ctx.fill();
+    // Lightning bolt
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    ctx.moveTo(cx + 5, cy + 10);
+    ctx.lineTo(cx - 8, cy + 28);
+    ctx.lineTo(cx + 2, cy + 28);
+    ctx.lineTo(cx - 5, cy + 48);
+    ctx.lineTo(cx + 12, cy + 25);
+    ctx.lineTo(cx + 2, cy + 25);
+    ctx.lineTo(cx + 14, cy + 10);
+    ctx.closePath();
+    ctx.fill();
+
+  } else if (type === 'mist') {
+    // Fog lines
+    ctx.strokeStyle = '#8899aa';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.6;
+    [[cy - 20, 50], [cy, 70], [cy + 20, 55], [cy + 40, 65]].forEach(([y, w]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx - w, y);
+      ctx.lineTo(cx + w, y);
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+  }
+}
+
 // ── WEATHER ──
 async function loadWeather(city, state) {
   try {
@@ -448,20 +764,29 @@ async function loadWeather(city, state) {
     const data = await res.json();
     if (data.cod !== 200) throw new Error('Weather fetch failed');
 
-    const icons = {
-      'Clear': '☀️', 'Clouds': '⛅', 'Rain': '🌧️',
-      'Drizzle': '🌦️', 'Thunderstorm': '⛈️', 'Snow': '❄️',
-      'Mist': '🌫️', 'Fog': '🌫️', 'Haze': '🌫️'
-    };
+    const weatherMain = data.weather[0].main;
+    const temp = Math.round(data.main.temp);
 
-    document.getElementById('w-kicker').textContent = `Current Conditions · ${city}, ${state}`;
-    document.getElementById('w-icon').textContent = icons[data.weather[0].main] || '🌤️';
-    document.getElementById('w-temp').textContent = `${Math.round(data.main.temp)}°`;
+    // Map weather type for animations
+    const typeMap = {
+      'Clear': 'clear', 'Clouds': 'clouds', 'Rain': 'rain',
+      'Drizzle': 'drizzle', 'Thunderstorm': 'thunder', 'Snow': 'snow',
+      'Mist': 'mist', 'Fog': 'mist', 'Haze': 'mist'
+    };
+    const animType = typeMap[weatherMain] || 'clear';
+
+    // Update text content
+    document.getElementById('w-kicker').textContent = `Current Conditions · Updated ${new Date().toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})}`;
+    document.getElementById('w-temp').textContent = `${temp}°`;
     document.getElementById('w-desc').textContent = data.weather[0].description;
     document.getElementById('w-city').textContent = `${city}, ${state}`;
     document.getElementById('w-feels').textContent = `${Math.round(data.main.feels_like)}°`;
     document.getElementById('w-humidity').textContent = `${data.main.humidity}%`;
-    document.getElementById('w-wind').textContent = `${Math.round(data.wind.speed)}mph`;
+    document.getElementById('w-wind').textContent = Math.round(data.wind.speed);
+
+    // Start weather animations
+    initWeatherAnimation(animType);
+    drawWeatherIcon(animType, temp);
   } catch (e) {
     console.warn('Weather load failed:', e);
     document.getElementById('w-temp').textContent = '--°';
@@ -680,35 +1005,38 @@ function buildPlaylist(ads, stockVideos = []) {
     stockSlides.push({ el: div, type: 'stock', adId: null });
   });
 
-  // Build rotation: ad, stock, ad, ad, weather, promo, repeat
-  if (adSlides.length === 0 && stockSlides.length === 0) {
-    slides.push({ el: document.getElementById('slide-promo'), type: 'promo', adId: null });
-    slides.push({ el: document.getElementById('slide-weather'), type: 'weather', adId: null });
-  } else {
-    let adIndex = 0;
-    let stockIndex = 0;
-    const totalSlots = Math.max((adSlides.length + stockSlides.length) * 2, 8);
+  const weatherSlide = { el: document.getElementById('slide-weather'), type: 'weather', adId: null };
+  const promoSlide = { el: document.getElementById('slide-promo'), type: 'promo', adId: null };
 
-    for (let i = 0; i < totalSlots; i++) {
-      if (i > 0 && i % 6 === 0) {
-        slides.push({ el: document.getElementById('slide-weather'), type: 'weather', adId: null });
-      } else if (i > 0 && i % 3 === 0) {
-        if (stockSlides.length > 0) {
-          slides.push(stockSlides[stockIndex % stockSlides.length]);
-          stockIndex++;
-        } else {
-          slides.push({ el: document.getElementById('slide-promo'), type: 'promo', adId: null });
-        }
-      } else if (i > 0 && i % 8 === 0) {
-        slides.push({ el: document.getElementById('slide-promo'), type: 'promo', adId: null });
+  // Always build a balanced rotation regardless of what content is available
+  // Pattern: content, content, content, weather, content, content, promo, repeat
+  const contentPool = [];
+
+  // Fill content pool with ads first, then stock videos
+  if (adSlides.length > 0) adSlides.forEach(s => contentPool.push(s));
+  if (stockSlides.length > 0) stockSlides.forEach(s => contentPool.push(s));
+
+  if (contentPool.length === 0) {
+    // No content at all — just weather and promo alternating
+    slides.push(promoSlide);
+    slides.push(weatherSlide);
+    slides.push(promoSlide);
+    slides.push(weatherSlide);
+  } else {
+    // Build rotation: 3 content, weather, 3 content, promo, repeat
+    let contentIndex = 0;
+    const cycles = Math.max(contentPool.length * 2, 4);
+    for (let i = 0; i < cycles; i++) {
+      // Add 3 content slides
+      for (let j = 0; j < 3; j++) {
+        slides.push(contentPool[contentIndex % contentPool.length]);
+        contentIndex++;
+      }
+      // Add weather after first group, promo after second group
+      if (i % 2 === 0) {
+        slides.push(weatherSlide);
       } else {
-        if (adSlides.length > 0) {
-          slides.push(adSlides[adIndex % adSlides.length]);
-          adIndex++;
-        } else if (stockSlides.length > 0) {
-          slides.push(stockSlides[stockIndex % stockSlides.length]);
-          stockIndex++;
-        }
+        slides.push(promoSlide);
       }
     }
   }
