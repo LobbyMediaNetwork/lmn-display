@@ -480,21 +480,45 @@ function buildTickerHTML(items) {
 
 const LMN_TICKER = [
   'Lobby Media Network · Serving the CSRA',
-  'Advertise your business on our growing screen network — lobbymedia.network',
+  'Advertise your business on our growing screen network · lobbymedia.network',
   'Screens across Evans · Augusta · Martinez · Aiken · North Augusta · Grovetown',
   'Lobby Media Network · Your ad in the room where it matters',
-  'Ask us about advertising packages starting at $299/month — lobbymedia.network',
+  'Ask us about advertising packages starting at $299/month · lobbymedia.network',
   'Lobby Media Network · Local advertising for local businesses',
-  'Reach CSRA customers while they wait — lobbymedia.network',
-  'New screens being added across the CSRA every week',
+  'Reach CSRA customers while they wait · lobbymedia.network',
+  'New screens being added across the CSRA every week · lobbymedia.network',
 ];
 
 async function loadNews(feedUrl) {
-  // Start ticker immediately with LMN content — never leave it blank
+  // Start ticker immediately with LMN content — never blank
   buildTickerHTML(LMN_TICKER);
   startTicker();
 
-  // Try to load real news in background — swap in if successful
+  // Try local news server first (Mini PC running lmn-news-server.js)
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch('http://localhost:3000/news', { signal: controller.signal });
+    clearTimeout(timeout);
+    const data = await res.json();
+    if (data.headlines && data.headlines.length > 0) {
+      console.log(`News loaded from local server: ${data.source}`);
+      buildTickerHTML(data.headlines);
+      // Refresh from local server every 30 minutes
+      setInterval(async () => {
+        try {
+          const r = await fetch('http://localhost:3000/news');
+          const d = await r.json();
+          if (d.headlines && d.headlines.length > 0) buildTickerHTML(d.headlines);
+        } catch(e) {}
+      }, 30 * 60 * 1000);
+      return;
+    }
+  } catch(e) {
+    console.log('Local news server not running — trying remote feeds');
+  }
+
+  // Fallback: try remote RSS via proxy
   const proxies = [
     `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.wrdw.com/rss/news.rss')}&count=8`,
     `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://theaugustapress.com/feed/')}&count=8`,
@@ -510,8 +534,7 @@ async function loadNews(feedUrl) {
       const data = await res.json();
       if (data.status === 'ok' && data.items && data.items.length > 0) {
         const source = screenData?.news_feed_source || 'CSRA News';
-        const headlines = data.items.map(i => `${i.title} — ${source}`);
-        // Mix news with LMN branding
+        const headlines = data.items.map(i => `${i.title} · ${source}`);
         const mixed = [];
         headlines.forEach((h, i) => {
           mixed.push(h);
@@ -524,7 +547,7 @@ async function loadNews(feedUrl) {
       continue;
     }
   }
-  // All feeds failed — LMN ticker already running, nothing to do
+  // All failed — LMN ticker already running
 }
 
 function startTicker() {
