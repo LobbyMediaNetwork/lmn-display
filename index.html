@@ -470,52 +470,61 @@ async function loadWeather(city, state) {
 }
 
 // ── NEWS TICKER ──
+function buildTickerHTML(items) {
+  const track = document.getElementById('ticker-track');
+  const doubled = [...items, ...items];
+  track.innerHTML = doubled.map(t =>
+    `<div class="ticker-item"><div class="ticker-dot"></div><div class="ticker-text">${t}</div></div><div class="ticker-divider"></div>`
+  ).join('');
+}
+
+const LMN_TICKER = [
+  'Lobby Media Network · Serving the CSRA',
+  'Advertise your business on our growing screen network — lobbymedia.network',
+  'Screens across Evans · Augusta · Martinez · Aiken · North Augusta · Grovetown',
+  'Lobby Media Network · Your ad in the room where it matters',
+  'Ask us about advertising packages starting at $299/month — lobbymedia.network',
+  'Lobby Media Network · Local advertising for local businesses',
+  'Reach CSRA customers while they wait — lobbymedia.network',
+  'New screens being added across the CSRA every week',
+];
+
 async function loadNews(feedUrl) {
-  const feeds = [
-    feedUrl,
-    'https://theaugustapress.com/feed/',
-    'https://augustagoodnews.com/feed/',
+  // Start ticker immediately with LMN content — never leave it blank
+  buildTickerHTML(LMN_TICKER);
+  startTicker();
+
+  // Try to load real news in background — swap in if successful
+  const proxies = [
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.wrdw.com/rss/news.rss')}&count=8`,
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://theaugustapress.com/feed/')}&count=8`,
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=8`,
   ];
 
-  const fallbackItems = [
-    'Welcome to the Lobby Media Network',
-    'Advertise your CSRA business — lobbymedia.network',
-    'Lobby Media Network · Serving the Central Savannah River Area',
-  ];
-
-  let items = [];
-
-  for (const feed of feeds) {
+  for (const proxy of proxies) {
     try {
-      const rss = await fetch(
-        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&count=10`
-      );
-      const data = await rss.json();
-      if (data.items && data.items.length > 0) {
-        items = data.items;
-        break;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(proxy, { signal: controller.signal });
+      clearTimeout(timeout);
+      const data = await res.json();
+      if (data.status === 'ok' && data.items && data.items.length > 0) {
+        const source = screenData?.news_feed_source || 'CSRA News';
+        const headlines = data.items.map(i => `${i.title} — ${source}`);
+        // Mix news with LMN branding
+        const mixed = [];
+        headlines.forEach((h, i) => {
+          mixed.push(h);
+          if (i % 3 === 2) mixed.push(LMN_TICKER[i % LMN_TICKER.length]);
+        });
+        buildTickerHTML(mixed.length > 0 ? mixed : LMN_TICKER);
+        return;
       }
     } catch(e) {
       continue;
     }
   }
-
-  const track = document.getElementById('ticker-track');
-  const source = screenData?.news_feed_source || 'Local News';
-
-  if (items.length > 0) {
-    const buildItems = () => items.map(item =>
-      `<div class="ticker-item"><div class="ticker-dot"></div><div class="ticker-text">${item.title} — ${source}</div></div><div class="ticker-divider"></div>`
-    ).join('');
-    track.innerHTML = buildItems() + buildItems();
-  } else {
-    const html = [...fallbackItems, ...fallbackItems].map(t =>
-      `<div class="ticker-item"><div class="ticker-dot"></div><div class="ticker-text">${t}</div></div><div class="ticker-divider"></div>`
-    ).join('');
-    track.innerHTML = html;
-  }
-
-  startTicker();
+  // All feeds failed — LMN ticker already running, nothing to do
 }
 
 function startTicker() {
