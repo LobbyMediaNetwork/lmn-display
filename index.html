@@ -1009,7 +1009,7 @@ function startRotation() {
 }
 
 // ── BUILD PLAYLIST ──
-function buildPlaylist(ads, stockVideos = []) {
+function buildPlaylist(ads, stockVideos = [], playlistOrder = []) {
   slides = [];
 
   // Add ad container to DOM
@@ -1043,29 +1043,56 @@ function buildPlaylist(ads, stockVideos = []) {
   const weatherSlide = { el: document.getElementById('slide-weather'), type: 'weather', adId: null };
   const promoSlide = { el: document.getElementById('slide-promo'), type: 'promo', adId: null };
 
-  // Always build a balanced rotation regardless of what content is available
-  // Pattern: content, content, content, weather, content, content, promo, repeat
-  const contentPool = [];
+  // Use playlist order from dashboard if available
+  if (playlistOrder && playlistOrder.length > 0) {
+    let adIndex = 0;
+    let stockIndex = 0;
 
-  // Fill content pool with ads first, then stock videos
+    playlistOrder.forEach(item => {
+      if (item.content_type === 'weather') {
+        slides.push(weatherSlide);
+      } else if (item.content_type === 'promo') {
+        slides.push(promoSlide);
+      } else if (item.content_type === 'stock') {
+        if (stockSlides.length > 0) {
+          // Match by content_id if available, otherwise round-robin
+          const match = item.content_id
+            ? stockSlides.find(s => s.el.dataset.videoId === item.content_id)
+            : null;
+          slides.push(match || stockSlides[stockIndex % stockSlides.length]);
+          stockIndex++;
+        }
+      } else if (item.content_type === 'ad') {
+        if (adSlides.length > 0) {
+          const match = item.content_id
+            ? adSlides.find(s => s.adId === item.content_id)
+            : null;
+          slides.push(match || adSlides[adIndex % adSlides.length]);
+          adIndex++;
+        }
+      }
+    });
+
+    // If playlist built successfully use it
+    if (slides.length > 0) return;
+  }
+
+  // Fallback: automatic rotation
+  const contentPool = [];
   if (adSlides.length > 0) adSlides.forEach(s => contentPool.push(s));
   if (stockSlides.length > 0) stockSlides.forEach(s => contentPool.push(s));
 
   if (contentPool.length === 0) {
-    // No content at all — just weather and promo alternating
     slides.push(promoSlide);
     slides.push(weatherSlide);
     slides.push(promoSlide);
     slides.push(weatherSlide);
   } else {
-    // Build rotation: content, weather, content, promo, repeat
     let contentIndex = 0;
     const cycles = Math.max(contentPool.length * 2, 4);
     for (let i = 0; i < cycles; i++) {
-      // Add 1 content slide
       slides.push(contentPool[contentIndex % contentPool.length]);
       contentIndex++;
-      // Alternate weather and promo after each content slide
       if (i % 2 === 0) {
         slides.push(weatherSlide);
       } else {
@@ -1134,8 +1161,16 @@ async function init() {
       console.warn('Stock videos load failed:', e);
     }
 
+    // 5. Fetch playlist order from Supabase
+    let playlistOrder = [];
+    try {
+      playlistOrder = await supabase('playlist?screen_id=eq.ALL&active=eq.true&order=position.asc&select=*') || [];
+    } catch(e) {
+      console.warn('Playlist fetch failed — using default rotation');
+    }
+
     // 5. Build playlist and start rotation
-    buildPlaylist(ads || [], stockVideos || []);
+    buildPlaylist(ads || [], stockVideos || [], playlistOrder);
 
     // 6. Hide loading slide and start
     document.getElementById('slide-loading').classList.remove('active');
