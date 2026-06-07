@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LMN — Screen Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0b09;
+  --surface: #131210;
+  --surface2: #1a1815;
+  --surface3: #222019;
+  --border: #2a2720;
+  --border2: #332f26;
+  --gold: #c9a84c;
+  --gold2: #e8c96a;
+  --gold-dim: rgba(201,168,76,0.1);
+  --gold-glow: rgba(201,168,76,0.05);
+  --white: #f5f0e8;
+  --muted: #6b6355;
+  --muted2: #9a8f7e;
+  --green: #4caf7d;
+  --green-dim: rgba(76,175,125,0.1);
+  --red: #e05a4e;
+  --red-dim: rgba(224,90,78,0.1);
+  --blue: #7aa2d4;
+  --blue-dim: rgba(122,162,212,0.1);
+  --orange: #d4874a;
+  --orange-dim: rgba(212,135,74,0.1);
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--white); font-family: "DM Sans", sans-serif; overflow: hidden; }
+
+/* ── LAYOUT ── */
+.app { display: grid; grid-template-columns: 56px 220px 1fr; grid-template-rows: 52px 1fr; height: 100vh; }
+
+/* ── TOPBAR ── */
+.topbar { grid-column: 1/4; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px 0 0; gap: 16px; }
+.topbar-logo { width: 56px; height: 52px; background: var(--gold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-right: 1px solid var(--border); cursor: pointer; }
+.topbar-logo span { font-family: "Bebas Neue", sans-serif; font-size: 20px; color: var(--bg); letter-spacing: 0.08em; }
+.topbar-brand { display: flex; flex-direction: column; margin-right: 24px; }
+.topbar-brand-name { font-family: "Bebas Neue", sans-serif; font-size: 18px; color: var(--gold); letter-spacing: 0.08em; line-height: 1; }
+.topbar-brand-sub { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; }
+.topbar-divider { width: 1px; height: 24px; background: var(--border2); }
+.topbar-page { font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted2); letter-spacing: 0.14em; text-transform: uppercase; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.topbar-status { display: flex; align-items: center; gap: 6px; font-family: "DM Mono", monospace; font-size: 10px; color: var(--green); letter-spacing: 0.1em; }
+.pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ── ICON RAIL ── */
+.icon-rail { grid-row: 2; grid-column: 1; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; }
+.rail-icon { width: 36px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; transition: background 0.15s; position: relative; text-decoration: none; }
+.rail-icon:hover { background: var(--gold-glow); }
+.rail-icon.active { background: var(--gold-dim); }
+.rail-icon.active::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 2px; height: 20px; background: var(--gold); border-radius: 0 2px 2px 0; }
+
+/* ── SIDEBAR ── */
+.sidebar { grid-row: 2; grid-column: 2; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sidebar-title { font-family: "Bebas Neue", sans-serif; font-size: 20px; color: var(--white); letter-spacing: 0.06em; line-height: 1; margin-bottom: 12px; }
+.search-box { background: var(--surface2); border: 1px solid var(--border2); color: var(--white); font-family: "DM Mono", monospace; font-size: 11px; padding: 7px 10px; width: 100%; outline: none; letter-spacing: 0.08em; }
+.search-box::placeholder { color: var(--muted); }
+
+/* Filter pills */
+.filters { display: flex; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
+.pill { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border2); color: var(--muted2); }
+.pill:hover { border-color: var(--gold); color: var(--gold); }
+.pill.active-pill { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+
+/* Screen list */
+.screen-list { flex: 1; overflow-y: auto; }
+.screen-list::-webkit-scrollbar { width: 3px; }
+.screen-list::-webkit-scrollbar-thumb { background: var(--border2); }
+.screen-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; display: flex; align-items: flex-start; gap: 10px; }
+.screen-item:hover { background: var(--gold-glow); }
+.screen-item.selected { background: var(--gold-dim); border-left: 2px solid var(--gold); }
+.sdot-wrap { padding-top: 3px; flex-shrink: 0; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; }
+.s-online { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.s-offline { background: var(--muted); }
+.s-warning { background: var(--orange); box-shadow: 0 0 5px var(--orange); }
+.si-name { font-size: 12px; color: var(--white); font-weight: 500; margin-bottom: 2px; line-height: 1.3; }
+.si-loc { font-size: 10px; color: var(--muted); font-family: "DM Mono", monospace; letter-spacing: 0.06em; }
+.si-id { font-size: 9px; color: var(--muted); font-family: "DM Mono", monospace; margin-top: 2px; }
+.si-meta { margin-left: auto; text-align: right; flex-shrink: 0; }
+.si-plays { font-family: "DM Mono", monospace; font-size: 12px; color: var(--gold); line-height: 1; }
+.si-lbl { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+/* Empty state */
+.empty-list { padding: 32px 16px; text-align: center; }
+.empty-list p { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; }
+
+/* ── MAP AREA ── */
+.map-area { grid-row: 2; grid-column: 3; position: relative; overflow: hidden; background: var(--bg); }
+
+/* Google Maps container */
+#google-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Map overlay gradient */
+.map-overlay { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, rgba(12,11,9,0.3) 100%); pointer-events: none; z-index: 1; }
+
+/* Map stats */
+.map-stats { position: absolute; top: 20px; left: 20px; display: flex; gap: 2px; z-index: 10; }
+.map-stat { background: var(--surface); border: 1px solid var(--border); padding: 10px 16px; }
+.ms-val { font-family: "Bebas Neue", sans-serif; font-size: 24px; color: var(--white); line-height: 1; letter-spacing: 0.04em; }
+.ms-lbl { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
+
+/* Map legend */
+.map-legend { position: absolute; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--border); padding: 12px 16px; z-index: 10; }
+.legend-title { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted2); margin-bottom: 6px; }
+.legend-item:last-child { margin-bottom: 0; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Detail card */
+.detail-card { position: absolute; bottom: 20px; left: 20px; width: 300px; background: var(--surface); border: 1px solid var(--border2); z-index: 10; display: none; }
+.detail-card.visible { display: block; }
+.dc-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.dc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dc-name { font-size: 14px; color: var(--white); font-weight: 500; flex: 1; }
+.dc-id { font-family: "DM Mono", monospace; font-size: 10px; color: var(--gold); }
+.dc-body { padding: 14px 16px; }
+.dc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.dc-row:last-child { margin-bottom: 0; }
+.dc-label { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+.dc-val { font-size: 12px; color: var(--white); font-weight: 500; text-align: right; }
+.dc-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.btn-sm { flex: 1; font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 7px 10px; cursor: pointer; border: none; text-align: center; transition: all 0.15s; }
+.btn-gold-sm { background: var(--gold); color: var(--bg); }
+.btn-gold-sm:hover { background: var(--gold2); }
+.btn-outline-sm { background: transparent; color: var(--muted2); border: 1px solid var(--border2); }
+.btn-outline-sm:hover { color: var(--white); border-color: var(--muted2); }
+
+/* Badge */
+.badge { display: inline-flex; align-items: center; padding: 2px 7px; font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); }
+
+/* Loading */
+.map-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 5; background: var(--bg); }
+.map-loading-bug { width: 52px; height: 52px; background: var(--black); border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; animation: pulse 1.5s ease infinite; }
+.map-loading-bug span { font-family: "Bebas Neue", sans-serif; font-size: 18px; color: var(--gold); }
+.map-loading-text { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; }
+
+/* Custom map marker styles injected via JS */
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo" onclick="window.location.href='dashboard.lobbymedia.network'"><span>LMN</span></div>
+    <div class="topbar-brand">
+      <div class="topbar-brand-name">Lobby Media</div>
+      <div class="topbar-brand-sub">Network Dashboard</div>
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-page">Screen Map</div>
+    <div class="topbar-right">
+      <div class="topbar-status"><div class="pulse"></div><span id="online-count">Loading...</span></div>
+    </div>
+  </div>
+
+  <!-- Icon Rail -->
+  <div class="icon-rail">
+    <a class="rail-icon" href="https://dashboard.lobbymedia.network" title="Dashboard">▦</a>
+    <div class="rail-icon active" title="Screen Map">🗺</div>
+    <div style="flex:1;"></div>
+    <div class="rail-icon" title="Refresh" onclick="loadScreens()">↻</div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-title">Screen Map</div>
+      <input class="search-box" id="search-input" placeholder="Search screens..." oninput="filterScreens(this.value)"/>
+    </div>
+    <div class="filters">
+      <div class="pill active-pill" onclick="setFilter('all', this)">All</div>
+      <div class="pill" onclick="setFilter('online', this)">Online</div>
+      <div class="pill" onclick="setFilter('warning', this)">Warning</div>
+      <div class="pill" onclick="setFilter('offline', this)">Offline</div>
+    </div>
+    <div class="screen-list" id="screen-list">
+      <div class="empty-list"><p>Loading screens...</p></div>
+    </div>
+  </div>
+
+  <!-- Map Area -->
+  <div class="map-area">
+    <div class="map-loading" id="map-loading">
+      <div class="map-loading-bug"><span>LMN</span></div>
+      <div class="map-loading-text">Loading network map...</div>
+    </div>
+
+    <div id="google-map"></div>
+    <div class="map-overlay"></div>
+
+    <!-- Stats -->
+    <div class="map-stats">
+      <div class="map-stat">
+        <div class="ms-val" id="stat-online" style="color:var(--green);">0</div>
+        <div class="ms-lbl">Online</div>
+      </div>
+      <div class="map-stat">
+        <div class="ms-val" id="stat-warning" style="color:var(--orange);">0</div>
+        <div class="ms-lbl">Warning</div>
+      </div>
+      <div class="map-stat">
+        <div class="ms-val" id="stat-offline" style="color:var(--muted);">0</div>
+        <div class="ms-lbl">Offline</div>
+      </div>
+      <div class="map-stat">
+        <div class="ms-val" id="stat-total">0</div>
+        <div class="ms-lbl">Total Screens</div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="map-legend">
+      <div class="legend-title">Screen Status</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green);box-shadow:0 0 4px var(--green);"></div>Online</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange);box-shadow:0 0 4px var(--orange);"></div>No Heartbeat</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--muted);"></div>Offline</div>
+    </div>
+
+    <!-- Detail Card -->
+    <div class="detail-card" id="detail-card">
+      <div class="dc-head">
+        <div class="dc-dot" id="dc-dot"></div>
+        <div class="dc-name" id="dc-name">--</div>
+        <div class="dc-id" id="dc-id">--</div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-row"><div class="dc-label">Location</div><div class="dc-val" id="dc-location">--</div></div>
+        <div class="dc-row"><div class="dc-label">Status</div><div class="dc-val" id="dc-status">--</div></div>
+        <div class="dc-row"><div class="dc-label">Business Hours</div><div class="dc-val" id="dc-hours">--</div></div>
+        <div class="dc-row"><div class="dc-label">Est. Daily Visitors</div><div class="dc-val" id="dc-visitors">--</div></div>
+        <div class="dc-row"><div class="dc-label">Display URL</div><div class="dc-val" id="dc-url" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);">--</div></div>
+      </div>
+      <div class="dc-footer">
+        <button class="btn-sm btn-outline-sm" onclick="closeDetail()">Close</button>
+        <button class="btn-sm btn-gold-sm" id="dc-open-btn">Open Display</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://lmbuqdcaionkmhcwwflp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtYnVxZGNhaW9ua21oY3d3ZmxwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODU1MTgsImV4cCI6MjA5NTY2MTUxOH0.ffrz3WZcIUg5hGzIkSOtREk7ilFQbZzUPIqVyMvXeVA';
+
+let allScreens = [];
+let markers = [];
+let map = null;
+let currentFilter = 'all';
+let selectedScreenId = null;
+let infoWindows = [];
+
+// Default CSRA center
+const CSRA_CENTER = { lat: 33.4735, lng: -82.0105 };
+
+async function dbFetch(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`
+    }
+  });
+  return res.json();
+}
+
+function getHealthStatus(screen) {
+  return screen.status === 'active' ? 'online' : 'offline';
+}
+
+function getStatusColor(status) {
+  if (status === 'online') return '#4caf7d';
+  if (status === 'warning') return '#d4874a';
+  return '#6b6355';
+}
+
+function createMarkerIcon(status, selected = false) {
+  const color = getStatusColor(status);
+  const size = selected ? 44 : 36;
+  const svg = `
+    <svg width="${size}" height="${size + 8}" viewBox="0 0 44 52" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="22" cy="22" r="20" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="${selected ? 2.5 : 1.5}"/>
+      <circle cx="22" cy="22" r="10" fill="${color}"/>
+      <line x1="22" y1="42" x2="22" y2="50" stroke="${color}" stroke-width="2"/>
+      ${selected ? `<circle cx="22" cy="22" r="16" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>` : ''}
+    </svg>
+  `;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(size, size + 8),
+    anchor: new google.maps.Point(size / 2, size + 8)
+  };
+}
+
+function getDefaultCoords(screen) {
+  // Default coords for known CSRA cities
+  const coords = {
+    'evans': { lat: 33.5397, lng: -82.1169 },
+    'martinez': { lat: 33.5165, lng: -82.0924 },
+    'augusta': { lat: 33.4735, lng: -82.0105 },
+    'aiken': { lat: 33.5601, lng: -81.7198 },
+    'north augusta': { lat: 33.5051, lng: -81.9651 },
+    'grovetown': { lat: 33.4543, lng: -82.2018 },
+    'thomson': { lat: 33.4715, lng: -82.5046 },
+    'waynesboro': { lat: 33.0898, lng: -82.0149 },
+    'beech island': { lat: 33.4557, lng: -81.8832 }
+  };
+  const city = (screen.city || '').toLowerCase();
+  return coords[city] || CSRA_CENTER;
+}
+
+async function loadScreens() {
+  try {
+    const data = await dbFetch('screens?select=*&order=created_at.asc');
+    allScreens = data || [];
+    renderSidebar();
+    renderMarkers();
+    updateStats();
+  } catch(e) {
+    console.error('Load error:', e);
+    document.getElementById('screen-list').innerHTML = '<div class="empty-list"><p>Error loading screens</p></div>';
+  }
+}
+
+function renderSidebar() {
+  const list = document.getElementById('screen-list');
+  let filtered = allScreens;
+
+  const search = document.getElementById('search-input').value.toLowerCase();
+  if (search) {
+    filtered = filtered.filter(s =>
+      s.business_name.toLowerCase().includes(search) ||
+      s.city.toLowerCase().includes(search) ||
+      s.screen_id.toLowerCase().includes(search)
+    );
+  }
+
+  if (currentFilter !== 'all') {
+    filtered = filtered.filter(s => getHealthStatus(s) === currentFilter);
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-list"><p>No screens found</p></div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => {
+    const status = getHealthStatus(s);
+    const dotClass = status === 'online' ? 's-online' : status === 'warning' ? 's-warning' : 's-offline';
+    const isSelected = s.screen_id === selectedScreenId;
+    return `
+      <div class="screen-item ${isSelected ? 'selected' : ''}" onclick="selectScreen('${s.screen_id}')">
+        <div class="sdot-wrap"><div class="sdot ${dotClass}"></div></div>
+        <div style="flex:1;">
+          <div class="si-name">${s.business_name}</div>
+          <div class="si-loc">${s.city}, ${s.state}</div>
+          <div class="si-id">${s.screen_id}</div>
+        </div>
+        <div class="si-meta">
+          <div class="si-plays" style="color:${status === 'online' ? 'var(--green)' : status === 'warning' ? 'var(--orange)' : 'var(--muted)'}">
+            ${status === 'online' ? '●' : status === 'warning' ? '!' : '—'}
+          </div>
+          <div class="si-lbl">${status}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMarkers() {
+  // Clear existing markers
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+  infoWindows.forEach(iw => iw.close());
+  infoWindows = [];
+
+  if (!map) return;
+
+  allScreens.forEach(screen => {
+    const status = getHealthStatus(screen);
+    const coords = screen.lat && screen.lng
+      ? { lat: parseFloat(screen.lat), lng: parseFloat(screen.lng) }
+      : getDefaultCoords(screen);
+
+    const marker = new google.maps.Marker({
+      position: coords,
+      map: map,
+      icon: createMarkerIcon(status, screen.screen_id === selectedScreenId),
+      title: screen.business_name,
+      zIndex: screen.screen_id === selectedScreenId ? 10 : 1
+    });
+
+    marker.addListener('click', () => selectScreen(screen.screen_id));
+    markers.push(marker);
+    screen._marker = marker;
+  });
+}
+
+function selectScreen(screenId) {
+  selectedScreenId = screenId;
+  const screen = allScreens.find(s => s.screen_id === screenId);
+  if (!screen) return;
+
+  // Update markers
+  allScreens.forEach(s => {
+    if (s._marker) {
+      s._marker.setIcon(createMarkerIcon(getHealthStatus(s), s.screen_id === screenId));
+      s._marker.setZIndex(s.screen_id === screenId ? 10 : 1);
+    }
+  });
+
+  // Pan map to screen
+  if (map && screen.lat && screen.lng) {
+    map.panTo({ lat: parseFloat(screen.lat), lng: parseFloat(screen.lng) });
+  } else if (map) {
+    map.panTo(getDefaultCoords(screen));
+  }
+
+  // Update detail card
+  const status = getHealthStatus(screen);
+  const color = getStatusColor(status);
+  document.getElementById('dc-dot').style.background = color;
+  document.getElementById('dc-dot').style.boxShadow = `0 0 5px ${color}`;
+  document.getElementById('dc-name').textContent = screen.business_name;
+  document.getElementById('dc-id').textContent = screen.screen_id;
+  document.getElementById('dc-location').textContent = `${screen.city}, ${screen.state}`;
+  document.getElementById('dc-status').innerHTML = `<span class="badge ${status === 'online' ? 'badge-green' : status === 'warning' ? 'badge-orange' : 'badge-red'}">● ${status}</span>`;
+  document.getElementById('dc-hours').textContent = screen.business_hours_open && screen.business_hours_close
+    ? `${screen.business_hours_open.slice(0,5)} – ${screen.business_hours_close.slice(0,5)}`
+    : '--';
+  document.getElementById('dc-visitors').textContent = screen.estimated_daily_visitors ? `${screen.estimated_daily_visitors}/day` : '--';
+  document.getElementById('dc-url').textContent = `?screen=${screen.screen_id}`;
+  document.getElementById('dc-open-btn').onclick = () => window.open(`https://display.lobbymedia.network?screen=${screen.screen_id}`, '_blank');
+  document.getElementById('detail-card').classList.add('visible');
+
+  // Update sidebar selection
+  renderSidebar();
+}
+
+function closeDetail() {
+  selectedScreenId = null;
+  document.getElementById('detail-card').classList.remove('visible');
+  allScreens.forEach(s => {
+    if (s._marker) s._marker.setIcon(createMarkerIcon(getHealthStatus(s), false));
+  });
+  renderSidebar();
+}
+
+function updateStats() {
+  const online = allScreens.filter(s => getHealthStatus(s) === 'online').length;
+  const warning = allScreens.filter(s => getHealthStatus(s) === 'warning').length;
+  const offline = allScreens.filter(s => getHealthStatus(s) === 'offline').length;
+
+  document.getElementById('stat-online').textContent = online;
+  document.getElementById('stat-warning').textContent = warning;
+  document.getElementById('stat-offline').textContent = offline;
+  document.getElementById('stat-total').textContent = allScreens.length;
+  document.getElementById('online-count').textContent = `${online} screen${online !== 1 ? 's' : ''} online`;
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active-pill'));
+  el.classList.add('active-pill');
+  renderSidebar();
+}
+
+function filterScreens(query) {
+  renderSidebar();
+}
+
+// Google Maps init callback
+function initMap() {
+  map = new google.maps.Map(document.getElementById('google-map'), {
+    center: CSRA_CENTER,
+    zoom: 10,
+    styles: [
+      { elementType: 'geometry', stylers: [{ color: '#1a1815' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#0c0b09' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#6b6355' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#222019' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1815' }] },
+      { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#4a4035' }] },
+      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2e2820' }] },
+      { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1a1815' }] },
+      { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#6b6355' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1621' }] },
+      { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#1e3a5f' }] },
+      { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1a1815' }] },
+      { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#162016' }] },
+      { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1a1815' }] },
+      { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a2720' }] },
+      { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#c9a84c' }] },
+      { featureType: 'administrative.neighborhood', elementType: 'labels.text.fill', stylers: [{ color: '#4a4035' }] }
+    ],
+    disableDefaultUI: true,
+    zoomControl: true,
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP }
+  });
+
+  document.getElementById('map-loading').style.display = 'none';
+  loadScreens();
+}
+</script>
+
+<!-- Google Maps API — uses free tier, no billing needed for basic map display -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&callback=initMap"></script>
+
+</body>
+</html>
